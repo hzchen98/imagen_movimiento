@@ -1,0 +1,51 @@
+ # -*- coding: utf-8 -*-
+
+from twisted.web.resouce import Resource
+import talkey
+import math, operator
+from PIL import Image
+from functools import reduce
+from datetime import datetime
+import _thread
+
+def compare(file1, file2):
+    image1 = Image.open(file1)
+    image2 = Image.open(file2)
+    h1 = image1.histogram()
+    h2 = image2.histogram()
+    rms = math.sqrt(reduce(operator.add,map(lambda a,b: (a-b)**2, h1, h2))/len(h1))
+    return rms
+
+class Data(Resource):
+	isLeaf = True
+	def render_GET(self, request):
+		global text
+		try:
+			text = str(request.args['value'][0]).lower()
+			if text != "":
+				text_buscar = ("á","é","í","ó","ú","ñ")
+				text_replace = ("a","e","i","o","u","n") 
+				for i in range(len(text_buscar)):
+					text = text.replace(text_buscar[i], text_replace[i])
+		except Exception as e:
+			return "Failed"
+
+def speak():
+	global tts
+	global text
+	image1 = ""
+	image2 = ""
+	time = datetime.now()
+	while True:
+		if (datetime.now() - time).seconds >= 8:
+			if compare(image1, image2) != 0:
+				tts.say(text)
+
+def data():
+	dataFrom = Data()
+
+if __name__ == '__main__':
+	text = "hola, bienvenido al departamento de informática!"
+	tts = talkey.Talkey(preferred_languages = ['es'],espeak = {'languages': {'es': {'voice': 'spanish-mb-es1','words_per_minute': 150}}})
+	_thread.start_new_thread(data)
+	_thread.start_new_thread(speak)
